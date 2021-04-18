@@ -16,13 +16,28 @@ SELECT \* FROM users;
 Using the `movies_db` database, write the correct SQL queries for each of these tasks:
 
 1.  The title of every movie.
+```sql
+SELECT title FROM movies;
+```
 
 2.  All information on the G-rated movies.
 
+```sql
+SELECT * FROM movies WHERE rating='G';
+```
+
 3.  The title and release year of every movie, ordered with the
     oldest movie first.
+
+```sql
+SELECT * FROM movies WHERE rating='G';
+```
     
 4.  All information on the 5 longest movies.
+
+```sql
+SELECT * FROM movies WHERE rating='G';
+```
 
 5.  A query that returns the columns of `rating` and `total`, tabulating the
     total number of G, PG, PG-13, and R-rated movies.
