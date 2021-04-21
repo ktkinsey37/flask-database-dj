@@ -1,4 +1,4 @@
-from flask import Flask, redirect, render_template
+from flask import Flask, redirect, render_template, request
 from flask_debugtoolbar import DebugToolbarExtension
 
 from models import db, connect_db, Playlist, Song, PlaylistSong
@@ -45,7 +45,9 @@ def show_all_playlists():
 def show_playlist(playlist_id):
     """Show detail on specific playlist."""
 
-    # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
+    playlist = Playlist.query.get_or_404(playlist_id)
+    print(playlist.songs, '****************************')
+    return render_template("playlist.html", playlist=playlist)
 
 
 @app.route("/playlists/add", methods=["GET", "POST"])
@@ -55,13 +57,23 @@ def add_playlist():
     - if form not filled out or invalid: show form
     - if valid: add playlist to SQLA and redirect to list-of-playlists
     """
-
-    # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
+    form = PlaylistForm()
+    # form.songs.choices = [(s.id, f'{s.title} by {s.artist}') for s in Song.query.all()] #This is a relic of trying to render the SelectMultipleField, would be down to look at this and see if it can be made workable.
+    if form.validate_on_submit():
+        song_ids = request.form.getlist('song')
+        new_playlist = Playlist(name=form.name.data, description=form.description.data)
+        songs_to_add = Song.query.filter(Song.id.in_(song_ids)).all()
+        new_playlist.songs = songs_to_add
+        db.session.add(new_playlist)
+        db.session.commit()
+        return render_template('playlist.html', playlist=new_playlist)
+    else:
+        songs = Song.query.all()
+        return render_template('new_playlist.html', form=form, songs=songs)
 
 
 ##############################################################################
 # Song routes
-
 
 @app.route("/songs")
 def show_all_songs():
@@ -75,7 +87,8 @@ def show_all_songs():
 def show_song(song_id):
     """return a specific song"""
 
-    # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
+    song = Song.query.get_or_404(song_id)
+    return render_template('song.html', song=song)
 
 
 @app.route("/songs/add", methods=["GET", "POST"])
@@ -86,30 +99,38 @@ def add_song():
     - if valid: add playlist to SQLA and redirect to list-of-songs
     """
 
-    # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
+    form = SongForm()
+    if form.validate_on_submit():
+        new_song = Song(title=form.title.data, artist=form.artist.data)
+        db.session.add(new_song)
+        db.session.commit()
+        return render_template('song.html', song=new_song)
+    else:
+        return render_template('new_song.html', form=form)
 
 
 @app.route("/playlists/<int:playlist_id>/add-song", methods=["GET", "POST"])
 def add_song_to_playlist(playlist_id):
     """Add a playlist and redirect to list."""
 
-    # BONUS - ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
-
-    # THE SOLUTION TO THIS IS IN A HINT IN THE ASSESSMENT INSTRUCTIONS
-
+    # Loads the playlist and form
     playlist = Playlist.query.get_or_404(playlist_id)
     form = NewSongForPlaylistForm()
 
-    # Restrict form to songs not already on this playlist
+    # Gets songs on playlist, then requests all songs that aren't those, makes these the choices for form
+    curr_on_playlist = [s.id for s in playlist.songs]
+    result = (db.session.query(Song.id, Song.title).filter(Song.id.notin_(curr_on_playlist)).all())
+    choices = [(x.id, x.title) for x in result]
 
-    curr_on_playlist = ...
-    form.song.choices = ...
+    form.song.choices = choices
 
     if form.validate_on_submit():
+        # Add chosen song to playlist
+        song = Song.query.get_or_404(form.song.data)
+        playlist.songs.append(song)
+        db.session.commit()
 
-          # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
-
-          return redirect(f"/playlists/{playlist_id}")
+        return redirect(f"/playlists/{playlist_id}", code=302)
 
     return render_template("add_song_to_playlist.html",
                              playlist=playlist,
